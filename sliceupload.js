@@ -70,7 +70,7 @@ var ajaxActive = 0;
 var ajaxMaxConc = 1;
 
 //thanks to Terrance for sharing addAjax to reduce concurent threads https://gist.github.com/Terrance/158a4c436baa64c4324803467844b00f
-//I use it because my server crashes under normal upload apparently... totaly optional
+// used in order to maintain oreder of uploaded files
 
 function addAjax(obj) { 
     ajaxReqs++;

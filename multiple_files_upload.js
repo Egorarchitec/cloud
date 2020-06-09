@@ -1,4 +1,5 @@
-function uploadfiles() { //handles the multiple files uploading
+function uploadfiles() {
+
     var files = new Array;
     var i = 0;
 
@@ -6,26 +7,21 @@ function uploadfiles() { //handles the multiple files uploading
     // load files
 
     while (document.getElementById('files').files[i] instanceof Blob) {
-        console.log(i);
         file = document.getElementById('files').files[i];
         files.push(file);
         i++;
-        console.log(file);
     }
-    console.log(files);
-    console.log(files.length);
 
     i = 0;
-    while (i < files.length){
+    while (i < files.length) {
         uploadfile_multiple(files[i]);
-        console.log('uploaded: ' + files[i]);
         i++;
     }
 
 
 }
 
-function uploadfile_multiple(file) { //handles uploading itslef including slicing
+function uploadfile_multiple(file) {
 
     var xhr = new XMLHttpRequest;
     var formdata = new FormData;
@@ -50,64 +46,94 @@ function uploadfile_multiple(file) { //handles uploading itslef including slicin
 
     } else {
         end = chunksize;
-        while (i <= chunkammount) {
+        while (i != chunkammount) {
             offset = i * chunksize;
             chunkname = name + '_' + i;
             chunk = file.slice(offset, offset + chunksize);
             chunks.push(chunk);
             chunknames.push(chunkname);
-            if (chunk.size == 0) {
-                chunks.pop();
-                chunknames.pop();
-            }
             console.log("chunkname" + chunkname);
             console.log("size" + chunk.size);
             i++;
         }
-        console.log(i + ';' + chunks.length);
-        chunks = chunks.reverse();
-        chunknames = chunknames.reverse();
-        console.log(chunks);
-        console.log(chunknames);
     }
-    for (index = 0; index <= chunkammount; index++) {
-        phpsend(chunknames[index], chunks[index], file, chunkammount);
-        console.log(chunks[index]);
-        console.log(chunknames[index]);
-        console.log("index" + index);
-        console.log("jsem na konci")
+    var index = 0;
+    sendarray(index, chunkammount, chunknames, chunks, file);
+
+}
+
+function sendarray(i, chunkammount, chunknames, chunks, file) {
+    while (i != chunkammount) {
+        phpsend(chunknames[i], chunks[i], file, chunkammount, i);
+        console.log(chunks[i]);
+        console.log(chunknames[i]);
+        console.log("index" + i);
+        console.log("jsem na konci");
+        i++;
     }
 }
 
+function repeateonce(i, chunkammount, chunknames, chunks, file) {
 
+    phpsend(chunknames[i], chunks[i], file, chunkammount, i);
+    console.log(chunks[i]);
+    console.log(chunknames[i]);
+    console.log("index" + i);
+    console.log("jsem na konci");
 
+}
 
-function phpsend(chunkname, chunk, file, chunkammount) {
+var successcounter = 0;
+var errcounter = 0;
 
+function phpsend(chunkname, chunk, file, chunkammount, index) {
+    console.log('done ' + successcounter);
+    console.log('errors ' + errcounter);
     var formdata = new FormData;
     formdata.append('name', file.name);
     formdata.append('chunkname', chunkname);
     formdata.append('file', chunk);
     formdata.append('chunkammount', chunkammount);
+    formdata.append('index', index);
+    formdata.append('size', file.size);
     addAjax({
         url: 'sliceupload.php',
         type: 'POST',
         data: formdata,
         contentType: false,
         processData: false,
+        complete: function () {
+
+        },
         success: function () {
+
+            successcounter++;
+            errcounter = 0;
+            if (successcounter == index + 1) {
+                $('.errorlog').text('Looking good');
+            }
+            if (successcounter == chunkammount) {
+                $('.errorlog').text('SUCCESS');
+            }
+        },
+        error: function () {
+            if (errcounter > 0) {
+                $('.errorlog').text('something went wrong');
+            }
+            errcounter++;
+            setTimeout(repeateonce(successcounter, chunkammount, chunkname, chunk, file), 1000);
         },
     });
 }
 
 
-//thanks to Terrance for sharing addAjax to reduce concurent threads https://gist.github.com/Terrance/158a4c436baa64c4324803467844b00f
-// used in order to maintain oreder of uploaded files
+
+
 
 var ajaxReqs = 0;
 var ajaxQueue = [];
 var ajaxActive = 0;
-var ajaxMaxConc = 1;  //number of parallel threads
+var ajaxMaxConc = 1;
 
 function addAjax(obj) {
     ajaxReqs++;
